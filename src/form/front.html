@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Registro Evento</title>
+
+<style>
+body { font-family: Arial; margin: 30px; background:#f4f4f4; }
+form { background:#fff; padding:20px; max-width:600px; border-radius:10px; }
+label { font-weight:bold; display:block; margin-top:12px; }
+input, select { width:100%; padding:10px; margin-top:5px; }
+.checkbox-group { margin-left:10px; }
+button { margin-top:20px; padding:12px; width:100%; background:#007bff; color:#fff; border:none; }
+button:hover { background:#0056b3; }
+small { color:gray; }
+</style>
+</head>
+
+<body>
+
+<h2>Registro a Evento Tecnológico</h2>
+
+<form action="http://localhost:8080/back/procesar.php" method="POST">
+
+<!-- Nombre -->
+<label>Nombre:</label>
+<input type="text"
+       name="nombre"
+       required
+       minlength="2"
+       maxlength="50"
+       pattern="[A-Za-zÁÉÍÓÚÑáéíóúñ ]+"
+       autocomplete="given-name">
+
+<!-- Apellido -->
+<label>Apellido:</label>
+<input type="text"
+       name="apellido"
+       required
+       minlength="2"
+       maxlength="50"
+       pattern="[A-Za-zÁÉÍÓÚÑáéíóúñ ]+"
+       autocomplete="family-name">
+
+<!-- Email -->
+<label>Email:</label>
+<input type="email"
+       name="email"
+       required
+       maxlength="100"
+       autocomplete="email">
+
+<!-- Fecha nacimiento (validación >= 16 años) -->
+<label>Fecha de nacimiento:</label>
+<input type="date"
+       name="fecha_nacimiento"
+       required
+       max="2010-01-01">
+<small>Debes tener al menos 16 años</small>
+
+<!-- Teléfono -->
+<label>Teléfono:</label>
+<input type="tel"
+       name="telefono"
+       required
+       pattern="[0-9]{8,15}"
+       inputmode="numeric"
+       placeholder="Ej: 1122334455"
+       autocomplete="tel">
+
+<!-- Puesto -->
+<label>Puesto laboral:</label>
+<select name="puesto" required>
+    <option value="">Seleccione</option>
+    <option value="Desarrollador">Desarrollador</option>
+    <option value="Tester">Tester</option>
+    <option value="Administrador">Administrador</option>
+    <option value="Soporte">Soporte</option>
+</select>
+
+<!-- Eventos -->
+<label>Eventos:</label>
+<div class="checkbox-group">
+    <input type="checkbox" name="eventos[]" value="Backend"> Backend<br>
+    <input type="checkbox" name="eventos[]" value="Frontend"> Frontend<br>
+    <input type="checkbox" name="eventos[]" value="DevOps"> DevOps<br>
+    <input type="checkbox" name="eventos[]" value="IA"> IA<br>
+    <input type="checkbox" name="eventos[]" value="Seguridad"> Seguridad<br>
+</div>
+
+<!-- Redes -->
+<label>Redes sociales:</label>
+<div class="checkbox-group">
+    <input type="checkbox" name="redes[]" value="LinkedIn"> LinkedIn<br>
+    <input type="checkbox" name="redes[]" value="GitHub"> GitHub<br>
+    <input type="checkbox" name="redes[]" value="Instagram"> Instagram<br>
+</div>
+
+<!-- Rango salarial -->
+<label>Rango salarial:</label>
+<input type="text"
+       name="rango"
+       required
+       placeholder="Ej: 200000-300000"
+       pattern="[0-9]{5,7}-[0-9]{5,7}">
+<small>Formato: mínimo-máximo (solo números)</small>
+
+<!-- Botón -->
+<button type="submit">Enviar</button>
+
+</form>
+
+</body>
+</html>
