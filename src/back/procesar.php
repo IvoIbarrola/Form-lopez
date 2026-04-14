@@ -1,8 +1,19 @@
 <?php
 
+// ================= CONFIG GENERAL =================
+
+// Evitar que warnings rompan el JSON
+error_reporting(0);
+ini_set('display_errors', 0);
+
+// Log de errores (opcional)
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/error.log');
+
+// Siempre responder JSON
 header('Content-Type: application/json');
 
-// ================= CONFIG =================
+// Ruta del archivo
 $archivo = __DIR__ . '/../data/participantes.dat';
 
 
@@ -17,55 +28,78 @@ function responder($status, $mensaje, $data = null) {
     exit;
 }
 
+
+// ---------- NORMALIZACIÓN ----------
+function limpiarTexto($texto) {
+    return trim($texto);
+}
+
+function normalizarEmail($email) {
+    return strtolower(trim($email));
+}
+
+function normalizarTelefono($telefono) {
+    return preg_replace('/\D/', '', $telefono);
+}
+
+
+// ---------- ID AUTOINCREMENTAL ----------
 function obtenerSiguienteId($archivo) {
 
-    if (!file_exists($archivo)) {
-        return 1;
-    }
+    if (!file_exists($archivo)) return 1;
 
     $lineas = file($archivo, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if (empty($lineas)) return 1;
 
-    if (empty($lineas)) {
-        return 1;
-    }
-
-    // Tomar última línea
     $ultimaLinea = end($lineas);
-
     $datos = explode('|', $ultimaLinea);
 
-    // Validar que el primer campo sea número
-    if (!is_numeric($datos[0])) {
-        return 1;
-    }
+    if (!is_numeric($datos[0])) return 1;
 
     return (int)$datos[0] + 1;
 }
 
+
+// ---------- VALIDACIONES ----------
 function validarDatos($d) {
 
     $errores = [];
 
-    if (empty($d['nombre'])) $errores[] = "Nombre requerido";
-    if (empty($d['apellido'])) $errores[] = "Apellido requerido";
+    // Nombre
+    if (empty($d['nombre'])) {
+        $errores[] = "Nombre requerido";
+    } elseif (!preg_match("/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/", $d['nombre'])) {
+        $errores[] = "Nombre solo debe contener letras";
+    }
 
+    // Apellido
+    if (empty($d['apellido'])) {
+        $errores[] = "Apellido requerido";
+    } elseif (!preg_match("/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/", $d['apellido'])) {
+        $errores[] = "Apellido solo debe contener letras";
+    }
+
+    // Email
     if (!filter_var($d['email'], FILTER_VALIDATE_EMAIL)) {
         $errores[] = "Email invalido";
     }
 
+    // Teléfono
     if (empty($d['telefono'])) {
         $errores[] = "Telefono requerido";
     }
 
+    // Puesto
     if (empty($d['puesto'])) {
         $errores[] = "Puesto requerido";
     }
 
+    // Eventos
     if (empty($d['eventos'])) {
         $errores[] = "Debe seleccionar al menos un evento";
     }
 
-    // Validar fecha
+    // Fecha
     $fecha = DateTime::createFromFormat('d/m/Y', $d['fecha_nacimiento']);
     $hoy = new DateTime();
 
@@ -81,20 +115,60 @@ function validarDatos($d) {
     return $errores;
 }
 
+
+// ---------- DUPLICADOS ----------
+function emailExiste($archivo, $email) {
+
+    if (!file_exists($archivo)) return false;
+
+    $fp = fopen($archivo, 'r');
+
+    while (($fila = fgetcsv($fp, 1000, '|')) !== false) {
+
+        if ($fila[0] === 'id') continue;
+
+        if (isset($fila[3]) && strtolower($fila[3]) === $email) {
+            fclose($fp);
+            return true;
+        }
+    }
+
+    fclose($fp);
+    return false;
+}
+
+function telefonoExiste($archivo, $telefono) {
+
+    if (!file_exists($archivo)) return false;
+
+    $fp = fopen($archivo, 'r');
+
+    while (($fila = fgetcsv($fp, 1000, '|')) !== false) {
+
+        if ($fila[0] === 'id') continue;
+
+        if (isset($fila[5]) && $fila[5] === $telefono) {
+            fclose($fp);
+            return true;
+        }
+    }
+
+    fclose($fp);
+    return false;
+}
+
+
+// ---------- ARCHIVO ----------
 function crearArchivoSiNoExiste($archivo, $headers) {
 
     if (!file_exists($archivo)) {
 
-        // Crear carpeta si no existe
         if (!file_exists(dirname($archivo))) {
             mkdir(dirname($archivo), 0777, true);
         }
 
         $fp = fopen($archivo, 'w');
-
-        // Escribir encabezados
         fputcsv($fp, $headers, '|');
-
         fclose($fp);
     }
 }
@@ -104,58 +178,58 @@ function guardarRegistro($archivo, $registro) {
     $fp = fopen($archivo, 'a');
 
     if (!$fp) {
-        responder('error', 'No se pudo abrir el archivo');
+        responder('error', 'No se pudo guardar el archivo');
     }
 
     fputcsv($fp, $registro, '|');
-
     fclose($fp);
 }
 
 
-// ================= VALIDAR METODO =================
+// ================= FLUJO PRINCIPAL =================
 
+// Validar método
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     responder('error', 'Metodo no permitido');
 }
 
-
-// ================= OBTENER DATOS =================
-
+// Obtener datos
 $datos = $_POST;
 
+// Normalizar
+$datos['nombre'] = limpiarTexto($datos['nombre'] ?? '');
+$datos['apellido'] = limpiarTexto($datos['apellido'] ?? '');
+$datos['email'] = normalizarEmail($datos['email'] ?? '');
+$datos['telefono'] = normalizarTelefono($datos['telefono'] ?? '');
 
-// ================= VALIDACIONES =================
-
+// Validar
 $errores = validarDatos($datos);
 
 if (!empty($errores)) {
     responder('error', 'Errores de validacion', $errores);
 }
 
-
-// ================= PROCESAMIENTO =================
-
-// Crear archivo si no existe
+// Crear archivo
 $headers = [
-    'id',
-    'nombre',
-    'apellido',
-    'email',
-    'fecha_nacimiento',
-    'telefono',
-    'puesto',
-    'eventos',
-    'redes',
-    'rango_salarial'
+    'id','nombre','apellido','email','fecha_nacimiento',
+    'telefono','puesto','eventos','redes','rango_salarial'
 ];
 
 crearArchivoSiNoExiste($archivo, $headers);
 
-// Obtener ID autoincremental
+// Validar duplicados
+if (emailExiste($archivo, $datos['email'])) {
+    responder('error', 'El email ya está registrado');
+}
+
+if (telefonoExiste($archivo, $datos['telefono'])) {
+    responder('error', 'El telefono ya está registrado');
+}
+
+// ID
 $id = obtenerSiguienteId($archivo);
 
-// Armar registro
+// Registro
 $registro = [
     $id,
     $datos['nombre'],
@@ -169,12 +243,8 @@ $registro = [
     $datos['rango']
 ];
 
-
-// ================= GUARDAR =================
-
+// Guardar
 guardarRegistro($archivo, $registro);
 
-
-// ================= RESPUESTA =================
-
+// Responder OK
 responder('ok', 'Registro guardado correctamente', $registro);
