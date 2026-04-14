@@ -4,7 +4,7 @@
  * Lee el archivo plano y lo convierte en un array asociativo.
  */
 function obtenerDatos() {
-    $archivo = 'datos/asistentes.txt'; 
+    $archivo = '../data/participantes.dat'; 
     $registros = [];
     
     if (file_exists($archivo)) {
