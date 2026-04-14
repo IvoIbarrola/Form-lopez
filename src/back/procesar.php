@@ -1,137 +1,180 @@
 <?php
 
-// Indicamos que la respuesta del servidor será en formato JSON
 header('Content-Type: application/json');
 
-// Verificamos que la petición sea de tipo POST
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+// ================= CONFIG =================
+$archivo = __DIR__ . '/../data/participantes.dat';
 
-    // Si no es POST, devolvemos un error en formato JSON
+
+// ================= FUNCIONES =================
+
+function responder($status, $mensaje, $data = null) {
     echo json_encode([
-        'status' => 'error',
-        'mensaje' => 'Metodo no permitido'
+        'status' => $status,
+        'mensaje' => $mensaje,
+        'data' => $data
     ]);
-
-    // Cortamos la ejecución del script
     exit;
 }
 
-// Obtenemos todos los datos enviados desde Postman (o frontend)
-$datos = $_POST;
+function obtenerSiguienteId($archivo) {
 
-// Creamos un array para almacenar posibles errores
-$errores = [];
+    if (!file_exists($archivo)) {
+        return 1;
+    }
+
+    $lineas = file($archivo, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+    if (empty($lineas)) {
+        return 1;
+    }
+
+    // Tomar última línea
+    $ultimaLinea = end($lineas);
+
+    $datos = explode('|', $ultimaLinea);
+
+    // Validar que el primer campo sea número
+    if (!is_numeric($datos[0])) {
+        return 1;
+    }
+
+    return (int)$datos[0] + 1;
+}
+
+function validarDatos($d) {
+
+    $errores = [];
+
+    if (empty($d['nombre'])) $errores[] = "Nombre requerido";
+    if (empty($d['apellido'])) $errores[] = "Apellido requerido";
+
+    if (!filter_var($d['email'], FILTER_VALIDATE_EMAIL)) {
+        $errores[] = "Email invalido";
+    }
+
+    if (empty($d['telefono'])) {
+        $errores[] = "Telefono requerido";
+    }
+
+    if (empty($d['puesto'])) {
+        $errores[] = "Puesto requerido";
+    }
+
+    if (empty($d['eventos'])) {
+        $errores[] = "Debe seleccionar al menos un evento";
+    }
+
+    // Validar fecha
+    $fecha = DateTime::createFromFormat('d/m/Y', $d['fecha_nacimiento']);
+    $hoy = new DateTime();
+
+    if ($fecha) {
+        $edad = $hoy->diff($fecha)->y;
+        if ($edad < 16) {
+            $errores[] = "Debe ser mayor de 16 años";
+        }
+    } else {
+        $errores[] = "Fecha invalida";
+    }
+
+    return $errores;
+}
+
+function crearArchivoSiNoExiste($archivo, $headers) {
+
+    if (!file_exists($archivo)) {
+
+        // Crear carpeta si no existe
+        if (!file_exists(dirname($archivo))) {
+            mkdir(dirname($archivo), 0777, true);
+        }
+
+        $fp = fopen($archivo, 'w');
+
+        // Escribir encabezados
+        fputcsv($fp, $headers, '|');
+
+        fclose($fp);
+    }
+}
+
+function guardarRegistro($archivo, $registro) {
+
+    $fp = fopen($archivo, 'a');
+
+    if (!$fp) {
+        responder('error', 'No se pudo abrir el archivo');
+    }
+
+    fputcsv($fp, $registro, '|');
+
+    fclose($fp);
+}
+
+
+// ================= VALIDAR METODO =================
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    responder('error', 'Metodo no permitido');
+}
+
+
+// ================= OBTENER DATOS =================
+
+$datos = $_POST;
 
 
 // ================= VALIDACIONES =================
 
-// Validamos que el nombre no esté vacío
-if (empty($datos['nombre'])) {
-    $errores[] = "Nombre requerido";
-}
+$errores = validarDatos($datos);
 
-// Validamos que el email tenga un formato correcto
-if (!filter_var($datos['email'], FILTER_VALIDATE_EMAIL)) {
-    $errores[] = "Email invalido";
-}
-
-// Validamos la fecha de nacimiento
-
-// Convertimos la fecha (string) a objeto DateTime usando el formato dd/mm/yyyy
-$fecha = DateTime::createFromFormat('d/m/Y', $datos['fecha_nacimiento']);
-
-// Obtenemos la fecha actual
-$hoy = new DateTime();
-
-// Verificamos que la fecha sea válida
-if ($fecha) {
-
-    // Calculamos la diferencia entre hoy y la fecha de nacimiento
-    $edad = $hoy->diff($fecha)->y;
-
-    // Validamos que tenga al menos 16 años
-    if ($edad < 16) {
-        $errores[] = "Menor de edad";
-    }
-
-} else {
-    // Si la fecha no es válida
-    $errores[] = "Fecha invalida";
-}
-
-
-// ================= RESPUESTA SI HAY ERRORES =================
-
-// Si el array de errores NO está vacío
 if (!empty($errores)) {
-
-    // Devolvemos los errores en formato JSON
-    echo json_encode([
-        'status' => 'error',
-        'errores' => $errores
-    ]);
-
-    // Cortamos ejecución
-    exit;
+    responder('error', 'Errores de validacion', $errores);
 }
 
 
 // ================= PROCESAMIENTO =================
 
-// Armamos un array con los datos listos para guardar
+// Crear archivo si no existe
+$headers = [
+    'id',
+    'nombre',
+    'apellido',
+    'email',
+    'fecha_nacimiento',
+    'telefono',
+    'puesto',
+    'eventos',
+    'redes',
+    'rango_salarial'
+];
+
+crearArchivoSiNoExiste($archivo, $headers);
+
+// Obtener ID autoincremental
+$id = obtenerSiguienteId($archivo);
+
+// Armar registro
 $registro = [
-
-    // Generamos un ID único usando timestamp
-    'id' => time(),
-
-    // Datos básicos
-    'nombre' => $datos['nombre'],
-    'apellido' => $datos['apellido'],
-    'email' => $datos['email'],
-    'fecha_nacimiento' => $datos['fecha_nacimiento'],
-    'telefono' => $datos['telefono'],
-    'puesto' => $datos['puesto'],
-
-    // Convertimos el array de eventos en string separado por coma
-    'eventos' => implode(',', $datos['eventos'] ?? []),
-
-    // Convertimos redes (si existe, si no usamos array vacío)
-    'redes' => implode(',', $datos['redes'] ?? []),
-
-    // Rango salarial
-    'rango_salarial' => $datos['rango']
+    $id,
+    $datos['nombre'],
+    $datos['apellido'],
+    $datos['email'],
+    $datos['fecha_nacimiento'],
+    $datos['telefono'],
+    $datos['puesto'],
+    implode(',', $datos['eventos']),
+    implode(',', $datos['redes'] ?? []),
+    $datos['rango']
 ];
 
 
-// ================= GUARDADO EN CSV =================
+// ================= GUARDAR =================
 
-// Definimos la ruta del archivo CSV
-$archivo = __DIR__ . '/../data/participantes.dat';
-
-// Abrimos el archivo en modo "append" (agregar al final)
-$fp = fopen($archivo, 'a');
-
-// Validamos que el archivo se haya abierto correctamente
-if (!$fp) {
-    echo json_encode([
-        'status' => 'error',
-        'mensaje' => 'No se pudo abrir el archivo'
-    ]);
-    exit;
-}
-
-// Escribimos una fila en el CSV usando separador "|"
-fputcsv($fp, $registro, '|');
-
-// Cerramos el archivo
-fclose($fp);
+guardarRegistro($archivo, $registro);
 
 
-// ================= RESPUESTA FINAL =================
+// ================= RESPUESTA =================
 
-// Devolvemos respuesta exitosa
-echo json_encode([
-    'status' => 'ok',
-    'mensaje' => 'Registro guardado',
-    'data' => $registro
-]);
+responder('ok', 'Registro guardado correctamente', $registro);
