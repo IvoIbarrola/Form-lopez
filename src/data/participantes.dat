@@ -19,3 +19,9 @@ id|nombre|apellido|email|fecha_nacimiento|telefono|puesto|eventos|redes|rango_sa
 18|Paula|Navarro|paula@mail.com|30/11/2002|1188776655|Diseñador|Frontend|Behance,Instagram|170000-260000
 19|Ezequiel|Morales|eze@mail.com|21/06/1995|1177665544|DevOps|Backend,DevOps|LinkedIn|260000-360000
 20|Julieta|Ortega|juli@mail.com|09/09/1999|1166443322|Tester|Seguridad,IA|Instagram|160000-240000
+21|Veronica|Gonzales|juanperez@gmail.com|10/05/2000|1134455667|Desarrollador|Backend,ia|lnkedin,github|200-300
+22|Gonzalo|Gonzales|juanperez@gmail.com|10/05/2000|1134455667|Desarrollador|Backend,ia|lnkedin,github|200-300
+23|11111|Gonzales|juanperez@gmail.com|10/05/2000|1134455667|Desarrollador|Backend,ia|lnkedin,github|200-300
+24|Gimena|Varon|juanperez@gmail.com|10/05/2000|1134455667|Desarrollador|Backend,ia|lnkedin,github|200-300
+25|Jose|Espinoza|juanperez@gmail.com|10/05/1982|1134455667|Desarrollador|Backend,ia|lnkedin,github|200-300
+26|Fernando69|"Victorino De Santa Maria "|juanperez@gmail.com|10/05/1982|cuatro|Desarrollador|Backend,ia|lnkedin,github|200-300
